@@ -167,7 +167,7 @@ namespace jwelloneEditor
             EditorGUILayout.BeginVertical(GUI.skin.box);
             {
                 var xNum = Mathf.FloorToInt(position.width / (_buttonSize + 3.5f));
-                var yNum = _displayTextures.Count / (xNum - 1);
+                var yNum = xNum < _displayTextures.Count ? _displayTextures.Count / (xNum - 1) : 1;
                 var index = 0;
                 var btnContent = new GUIContent();
                 for (var y = 0; y < yNum; ++y)
