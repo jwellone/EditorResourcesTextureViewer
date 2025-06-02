@@ -2,6 +2,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using System.IO;
 
 namespace jwelloneEditor
 {
@@ -11,7 +12,7 @@ namespace jwelloneEditor
 
         [SerializeField] int _selectIndex;
         [SerializeField] Vector2 _scrollPosition;
-        readonly List<Texture> _textures = new();
+        readonly List<Texture2D> _textures = new();
 
         [MenuItem("Tools/jwellone/Editor Resources Viewer")]
         static void Init()
@@ -22,22 +23,17 @@ namespace jwelloneEditor
 
         void OnEnable()
         {
-            var assetPaths = Resources.FindObjectsOfTypeAll(typeof(Texture))
+            var assets = Resources.FindObjectsOfTypeAll(typeof(Texture2D))
                 .Where(x => AssetDatabase.GetAssetPath(x) == "Library/unity editor resources")
                 .Select(x => x.name)
                 .Distinct()
                 .OrderBy(x => x)
+                .Select(x => EditorGUIUtility.Load(x) as Texture2D)
+                .Where(x => x)
                 .ToArray();
 
             _textures.Clear();
-            foreach (var assetPath in assetPaths)
-            {
-                var texture = (Texture)EditorGUIUtility.Load(assetPath);
-                if (texture != null)
-                {
-                    _textures.Add(texture);
-                }
-            }
+            _textures.AddRange(assets);
         }
 
         void OnDisable()
@@ -48,6 +44,7 @@ namespace jwelloneEditor
         void OnGUI()
         {
             var texture = _textures[_selectIndex];
+
             GUILayout.Label($"[Path]{texture.name} [Size]{texture.width} x {texture.height} [Format]{texture.graphicsFormat}");
 
             EditorGUILayout.BeginVertical();
@@ -56,6 +53,15 @@ namespace jwelloneEditor
 
             DrawTexture(texture);
 
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Export", GUILayout.Width(48)))
+            {
+                var filePath = EditorUtility.SaveFilePanel("Unity Editor Resources", Application.dataPath, $"{texture.name}.png", ".png");
+                Export(texture, filePath);
+            }
             GUILayout.EndHorizontal();
 
             DrawButtonArea();
@@ -129,6 +135,41 @@ namespace jwelloneEditor
             EditorGUILayout.EndVertical();
 
             EditorGUILayout.EndScrollView();
+        }
+
+        void Export(Texture2D source, string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+
+            var texture = new Texture2D(source.width, source.height, source.format, source.mipmapCount > 1);
+            Graphics.CopyTexture(source, texture);
+            var bytes = default(byte[]);
+            switch (Path.GetExtension(path))
+            {
+                case ".jpg":
+                case ".jpeg":
+                    bytes = texture.EncodeToJPG();
+                    break;
+
+                case ".tga":
+                    bytes = texture.EncodeToTGA();
+                    break;
+
+                default:
+                    bytes = texture.EncodeToPNG();
+                    break;
+            }
+
+            DestroyImmediate(texture);
+            File.WriteAllBytes(path, bytes);
+
+            if (path.StartsWith(Application.dataPath))
+            {
+                AssetDatabase.ImportAsset(path.Replace(Application.dataPath, "Assets"));
+            }
         }
     }
 }
