@@ -4,6 +4,8 @@ using UnityEditor;
 using System.Collections.Generic;
 using System.IO;
 
+#nullable enable
+
 namespace jwelloneEditor
 {
     public sealed class EditorResourcesTextureViewer : EditorWindow
@@ -12,7 +14,11 @@ namespace jwelloneEditor
 
         [SerializeField] int _selectIndex;
         [SerializeField] Vector2 _scrollPosition;
-        readonly List<Texture2D> _textures = new();
+
+        string _filter = string.Empty;
+
+        readonly List<Texture2D> _cacheTextures = new();
+        readonly List<Texture2D> _displayTextures = new();
 
         [MenuItem("Tools/jwellone/Editor Resources Viewer")]
         static void Init()
@@ -32,20 +38,26 @@ namespace jwelloneEditor
                 .Where(x => x)
                 .ToArray();
 
-            _textures.Clear();
-            _textures.AddRange(assets);
+            _cacheTextures.Clear();
+            _cacheTextures.AddRange(assets!);
+
+            _displayTextures.Clear();
+            _displayTextures.AddRange(assets!);
+
+            _filter = string.Empty;
         }
 
         void OnDisable()
         {
-            _textures.Clear();
+            _cacheTextures.Clear();
+            _displayTextures.Clear();
         }
 
         void OnGUI()
         {
-            var texture = _textures[_selectIndex];
+            var texture = _selectIndex < _displayTextures.Count ? _displayTextures[_selectIndex] : null;
 
-            GUILayout.Label($"[Path]{texture.name} [Size]{texture.width} x {texture.height} [Format]{texture.graphicsFormat}");
+            GUILayout.Label($"[Path]{texture?.name} [Size]{texture?.width} x {texture?.height} [Format]{texture?.graphicsFormat}");
 
             EditorGUILayout.BeginVertical();
 
@@ -56,12 +68,17 @@ namespace jwelloneEditor
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
+
+            DrawFilter();
+
             GUILayout.FlexibleSpace();
+            GUI.enabled = texture != null;
             if (GUILayout.Button("Export", GUILayout.Width(48)))
             {
-                var filePath = EditorUtility.SaveFilePanel("Unity Editor Resources", Application.dataPath, $"{texture.name}.png", ".png");
+                var filePath = EditorUtility.SaveFilePanel("Unity Editor Resources", Application.dataPath, $"{texture!.name}.png", ".png");
                 Export(texture, filePath);
             }
+            GUI.enabled = true;
             GUILayout.EndHorizontal();
 
             DrawButtonArea();
@@ -69,20 +86,59 @@ namespace jwelloneEditor
             EditorGUILayout.EndVertical();
         }
 
-        void DrawTexture(Texture texture)
+        void UpdateData()
+        {
+            _selectIndex = 0;
+            _displayTextures.Clear();
+            foreach (var texture in _cacheTextures)
+            {
+                if (!string.IsNullOrEmpty(_filter) && !texture.name.ToLower().Contains(_filter.ToLower()))
+                {
+                    continue;
+                }
+
+                _displayTextures.Add(texture);
+            }
+        }
+
+        void DrawFilter()
+        {
+            GUILayout.BeginHorizontal();
+            GUI.SetNextControlName("filterField");
+            var filter = GUILayout.TextField(_filter, "SearchTextField", GUILayout.Width(200));
+            GUI.FocusControl("filterField");
+            GUI.enabled = !string.IsNullOrEmpty(_filter);
+            if (GUILayout.Button("", "SearchCancelButton"))
+            {
+                filter = string.Empty;
+            }
+            GUI.enabled = true;
+            GUILayout.EndHorizontal();
+
+            if (filter != _filter)
+            {
+                _filter = filter;
+                UpdateData();
+            }
+        }
+
+        void DrawTexture(Texture? texture)
         {
             var width = position.size.x;
             var height = position.size.y / 2f;
             var texWidth = (float)((width > height) ? height : width);
             var texHeight = texWidth * texWidth / texWidth;
 
-            if (texture.width > texture.height)
+            if (texture != null)
             {
-                texHeight *= texture.height / (float)texture.width;
-            }
-            else
-            {
-                texWidth *= texture.width / (float)texture.height;
+                if (texture.width > texture.height)
+                {
+                    texHeight *= texture.height / (float)texture.width;
+                }
+                else
+                {
+                    texWidth *= texture.width / (float)texture.height;
+                }
             }
 
             var spaceWidth = (width - texWidth) / 2f;
@@ -111,15 +167,15 @@ namespace jwelloneEditor
             EditorGUILayout.BeginVertical(GUI.skin.box);
             {
                 var xNum = Mathf.FloorToInt(position.width / (_buttonSize + 3.5f));
-                var yNum = _textures.Count / (xNum - 1);
+                var yNum = _displayTextures.Count / (xNum - 1);
                 var index = 0;
                 var btnContent = new GUIContent();
                 for (var y = 0; y < yNum; ++y)
                 {
                     EditorGUILayout.BeginHorizontal();
-                    for (var x = 0; x < xNum && index < _textures.Count; ++x, ++index)
+                    for (var x = 0; x < xNum && index < _displayTextures.Count; ++x, ++index)
                     {
-                        var texture = _textures[index];
+                        var texture = _displayTextures[index];
                         btnContent.image = texture;
                         btnContent.tooltip = texture.name;
 
