@@ -10,7 +10,7 @@ namespace jwelloneEditor
 {
     public sealed class EditorResourcesTextureViewer : EditorWindow
     {
-        const int _buttonSize = 24;
+        const int _buttonSize = 32;
 
         [SerializeField] int _selectIndex;
         [SerializeField] Vector2 _scrollPosition;
@@ -57,8 +57,6 @@ namespace jwelloneEditor
         {
             var texture = _selectIndex < _displayTextures.Count ? _displayTextures[_selectIndex] : null;
 
-            GUILayout.Label($"[Path]{texture?.name} [Size]{texture?.width} x {texture?.height} [Format]{texture?.graphicsFormat}");
-
             EditorGUILayout.BeginVertical();
 
             GUILayout.BeginHorizontal(GUILayout.Height(position.size.y / 2f));
@@ -69,9 +67,10 @@ namespace jwelloneEditor
 
             GUILayout.BeginHorizontal();
 
+            GUILayout.FlexibleSpace();
+
             DrawFilter();
 
-            GUILayout.FlexibleSpace();
             GUI.enabled = texture != null;
             if (GUILayout.Button("Export", GUILayout.Width(48)))
             {
@@ -153,6 +152,11 @@ namespace jwelloneEditor
 
             GUI.DrawTexture(textureRect, texture);
 
+            textureRect.x = 4;
+            textureRect.width = width;
+            textureRect.y += texHeight / 2f + spaceHeight - 8;
+            GUI.Label(textureRect, $"{texture?.name} , {texture?.width} x {texture?.height} , {texture?.graphicsFormat} , {texture?.filterMode}");
+
             GUILayout.Space(spaceHeight);
             GUILayout.EndVertical();
 
@@ -162,6 +166,8 @@ namespace jwelloneEditor
 
         void DrawButtonArea()
         {
+            EditorGUILayout.Space(1);
+
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
             EditorGUILayout.BeginVertical(GUI.skin.box);
