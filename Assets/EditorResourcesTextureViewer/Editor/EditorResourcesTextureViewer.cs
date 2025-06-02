@@ -1,8 +1,10 @@
 using System.Linq;
-using UnityEngine;
-using UnityEditor;
 using System.Collections.Generic;
 using System.IO;
+using UnityEngine;
+using UnityEditor;
+using UnityEditor.IMGUI.Controls;
+using System;
 
 #nullable enable
 
@@ -16,7 +18,7 @@ namespace jwelloneEditor
         [SerializeField] Vector2 _scrollPosition;
 
         string _filter = string.Empty;
-
+        [NonSerialized] SearchField? _searchField;
         readonly List<Texture2D> _cacheTextures = new();
         readonly List<Texture2D> _displayTextures = new();
 
@@ -69,7 +71,7 @@ namespace jwelloneEditor
 
             GUILayout.FlexibleSpace();
 
-            DrawFilter();
+            DrawSearchField();
 
             GUI.enabled = texture != null;
             if (GUILayout.Button("Export", GUILayout.Width(48)))
@@ -100,20 +102,10 @@ namespace jwelloneEditor
             }
         }
 
-        void DrawFilter()
+        void DrawSearchField()
         {
-            GUILayout.BeginHorizontal();
-            GUI.SetNextControlName("filterField");
-            var filter = GUILayout.TextField(_filter, "SearchTextField", GUILayout.Width(200));
-            GUI.FocusControl("filterField");
-            GUI.enabled = !string.IsNullOrEmpty(_filter);
-            if (GUILayout.Button("", "SearchCancelButton"))
-            {
-                filter = string.Empty;
-            }
-            GUI.enabled = true;
-            GUILayout.EndHorizontal();
-
+            _searchField ??= new SearchField();
+            var filter = _searchField.OnToolbarGUI(_filter);
             if (filter != _filter)
             {
                 _filter = filter;
