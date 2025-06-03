@@ -12,12 +12,10 @@ namespace jwelloneEditor
 {
     public sealed class EditorResourcesTextureViewer : EditorWindow
     {
-        const int _buttonSize = 32;
-
         [SerializeField] int _selectIndex;
+        [SerializeField] int _buttonSize = 32;
         [SerializeField] Vector2 _scrollPosition;
-
-        string _filter = string.Empty;
+        [SerializeField]string _filter = string.Empty;
         [NonSerialized] SearchField? _searchField;
         readonly List<Texture2D> _cacheTextures = new();
         readonly List<Texture2D> _displayTextures = new();
@@ -71,7 +69,17 @@ namespace jwelloneEditor
 
             GUILayout.FlexibleSpace();
 
+            _buttonSize = EditorGUILayout.IntSlider(_buttonSize, 24, 128);
+
             DrawSearchField();
+
+            GUI.enabled = _displayTextures.Count > 0;
+            if (GUILayout.Button("Export All", GUILayout.Width(64)))
+            {
+                var filePath = EditorUtility.SaveFolderPanel("Unity Editor Resources", Application.dataPath, "");
+                ExportAll(_displayTextures, filePath);
+            }
+            GUI.enabled = true;
 
             GUI.enabled = texture != null;
             if (GUILayout.Button("Export", GUILayout.Width(48)))
@@ -189,6 +197,14 @@ namespace jwelloneEditor
             EditorGUILayout.EndVertical();
 
             EditorGUILayout.EndScrollView();
+        }
+
+        void ExportAll(List<Texture2D> textures, string path)
+        {
+            foreach (var texture in textures)
+            {
+                Export(texture, Path.Combine(path, $"{texture.name}.png"));
+            }
         }
 
         void Export(Texture2D source, string path)
